@@ -79,7 +79,6 @@ testInstances = testGroup "Ex. 3: Show and Eq instances"
           failed = unlines
             ["\27[0mThe correct result for `show startingPos`"
             , correctPrint
-            , ""
             , "Your result:"
             , show startingPos
             ]
@@ -206,14 +205,14 @@ testNextMove = testGroup "Grand Finale: nextMove"
           step [startingPos] BluePlayer first
 
         step :: [Board] -> Player -> Mover -> Gen Result
-        step gs@(g:_) p m = do
-          g' <- fromJust . uncurry (makeMove g) <$> case m of
-            AI -> pure $ nextMove gs p
-            Rando -> fmap (\(Move a c) -> (a,c)) $ elements $ nextMoves g p
-          if
-            | gameIsWon g (opp p) -> pure $ if m == AI then Win else Lose
-            | gameIsDrawn (g':gs) -> pure Draw
-            | otherwise -> step (g':gs) (opp p) (oppM m)
+        step gs@(g:_) p m = if
+          | gameIsWon g p -> pure $ if m == AI then Lose else Win
+          | gameIsDrawn gs -> pure Draw
+          | otherwise -> do
+            g' <- fromJust . uncurry (makeMove g) <$> case m of
+              AI -> pure $ nextMove gs p
+              Rando -> fmap (\(Move a c) -> (a,c)) $ elements $ nextMoves g p
+            step (g':gs) (opp p) (oppM m)
 
       forAll playGame $ \res -> do
           classify (res == Lose) "Lose" 

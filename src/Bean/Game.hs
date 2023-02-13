@@ -141,16 +141,15 @@ getPiece brd (x,y) =
 
   [JUSTIFICATION]
 
-  A cow can only move into empty spaces, one cell up, down, left and right of it, so i had to check all i 
-  had to do is check if these cells were empty and use filter to remove them if they werent. I did this by
-  creating an isEmpty function which takes a Coord and checks if it is empty ( it is also imortant to note
-  that isEmpty will  return false if the the cell is not on the board and getPiece returns Nothing ). And 
-  i then used filter to filter out the non empty or non existant cells. This seemed like the most 
-  straightforward way. I could have instead created a function that took a list of coordinates and translated
-  them into pieces in the same iteration of the board, which would have been quicker as i wouldnt have to 
-  iterate through the board multiple times to get each piece. However, this would have required a lot more
-  and complicated code, the straightforward method makes use of previously written functions so is very concise
-  and understandable
+  A cow can only move into empty spaces, one cell up, down, left and right of it, so ALL i had to do is check
+  if these cells were empty and use filter to remove them if they werent. I did this by creating an isEmpty 
+  function which takes a Coord and checks if it is empty ( it is also iPmortant to note that isEmpty will  
+  return false if the the cell is not on the board and getPiece returns Nothing ). And i then used filter to 
+  filter out the non empty or out of bounds cells. This seemed like the most straightforward way. I could have 
+  instead created a function that took a list of coordinates and translated them into pieces in the same iteration 
+  of the board, which would have been quicker as i wouldnt have to iterate through the board multiple times to 
+  get each piece. However, this would have required a lot more and complicated code, the straightforward method 
+  makes use of previously written functions so is more concise and understandable
 -}
 
 
@@ -165,8 +164,21 @@ validCowMoves brd (x,y) = filter ( isEmpty brd)  [ (x+1,y), (x-1,y), (x,y+1), (x
 {-| 
   Ex. 6: Return the valid moves for a bean on the given team in position c.
 
-  [JUSTIFY]
--}
+  [JUSTIFICATION]
+  The first thing to notice is that the function must check which player it is, to do this i created a and Eq 
+  instance for Player and defined how the (==) operator would work with them. Instead i could have used pattern
+  matching but this would have resulted in a lot of repeated code
+
+  Next we need to understand where a bean move can move. A bean can move one cell up, down, to the left or to right 
+  of it, provided if the cell is empty or contains an enemy bean. So i created a function that checked if a piece is
+  a bean, and a function to check if a piece belongs to a player. I created these functions seperately as i imagined
+  they would be useful for other functions ( i also created the an equivalent isCow method which isnt used in this
+  question but is used in other functions).
+
+  After i created all these auxillary functions, all i had to do is get a list of adjacent cells, and filter out the 
+  cells that contained cow pieces or pieces from the same team (or off board cells). This method seemed like the most
+  straightforward one
+ -}
 
 instance Eq Player where
   (==) :: Player -> Player -> Bool
@@ -193,21 +205,21 @@ isCow piece =   piece == Just (Red Cow) || piece == Just (Blue Cow)
 validBeanMoves :: Board -> Player -> Coord -> [Coord]
 validBeanMoves brd player (x,y) = filter f allMoves
   where allMoves = [ (x+1,y), (x-1,y), (x,y+1), (x,y-1) ]
-        f a =
-          -- if the piece is a bean and does not belong to the player 
-          isBean piece && not ( belongsTo player piece)
-          || piece == Just Empty        -- or if the piece is empty              
-          
+        f a = isBean piece && not ( belongsTo player piece) || piece == Just Empty        
+              -- if the piece is a bean and does not belong to the player or if its empty
+      
           where piece = getPiece brd a 
 {-| 
   Ex. 7: Set a given (valid) coordinate to have a given piece (or Empty).
 
-  [JUSTIFY]
+  First i created a function replace, which replaces the element at index i in a list, with a new value. I then took the 
+  row specified by y, replaced the element specified by x with the new piece, then replaced the row on the board with the 
+  new row with the new piece.
 -}
 
--- Replaces an the element in pos with val
+-- Replaces the element at index i with val in a list 
 replace :: Int -> a -> [a] -> [a]
-replace pos val list  = take pos list ++ [val] ++ drop (pos+1) list 
+replace i val list  = take i list ++ [val] ++ drop (i+1) list 
 
 setCoord :: Board -> Coord -> Piece -> Board
 setCoord brd (x,y) piece = replace y newRow brd  
@@ -221,7 +233,15 @@ setCoord brd (x,y) piece = replace y newRow brd
   piece from the first position to the second. If the move was not valid, or 
   there was no piece in the first position, return Nothing instead.
 
-  [JUSTIFY]
+  [JUSTIFICATION]
+
+  Different types of pieces has a different set of valid moves, in fact, the different moves can be grouped 
+  into three categories blue beans, red beans and cows.
+
+  After determining which valid move corresponds to the piece if any, we have to check if the new position
+  is part of the valid moves. If it is we then have to set the new position to have this piece using our 
+  setCoord function, and the use that same function to cleae the previous position so that its empty.
+
 -}
 
 
@@ -232,6 +252,7 @@ makeMove brd pos1 pos2
   where
     newBoard = setCoord brd pos2 (fromJust piece) -- Puts the piece in the correct position 
     newNewBoard = setCoord newBoard pos1 Empty    -- Makes the initial position of the piece empty
+
 
     -- Sets validMoves according to the piece
     validMoves
@@ -306,7 +327,7 @@ gameIsWon brd player = length moveableCows /= 2
 countEnemyBeans :: Board -> Player -> Coord -> Int
 countEnemyBeans brd player (x,y) = countIF f [ (x+1,y), (x-1,y), (x,y+1), (x,y-1) ]
 
-  where f pos =  not (belongsTo player piece) && isBean piece   where piece =  getPiece brd pos
+  where f pos =  not (belongsTo player piece) && isBean piece  where piece =  getPiece brd pos
 
 -- Counts the number of enemy cows around a position on a board
 countEnemyCows :: Board -> Player -> Coord -> Int
@@ -317,12 +338,10 @@ countEnemyCows brd player (x,y) = countIF f [ (x+1,y), (x-1,y), (x,y+1), (x,y-1)
 
 -- Returns the a score for position on a board using my cow heuristic
 getCowHeuristicScore :: Board  -> Coord -> Coord -> Int
-getCowHeuristicScore brd from to = score 
+getCowHeuristicScore brd from to   
+  | toScore > fromScore       = 1 + 3-fromScore 
+  | otherwise                 = 0
   where 
-    score 
-      | toScore > fromScore       = 1 + 3-fromScore 
-      | otherwise                 = 0
-      
     fromScore = length $ validCowMoves brd from 
     toScore = 1 + length (validCowMoves brd to) 
 
@@ -358,7 +377,6 @@ getBestCowMove brd  from = foldr f (-100,(-1,-1),(-1,-1)) (validCowMoves brd fro
     f newTo (score,_,to)  = 
       if newScore > score then (newScore,from,newTo) else (score,from,to)
       where newScore = getCowHeuristicScore brd from to 
-
 
 -- Gets the best move out of a list of moves with their heuristic score (score,from,to)
 getBestMove :: ([(Int, Coord, Coord)] ->(Int, Coord, Coord))
